@@ -3,7 +3,7 @@
  * Concepts: Async data fetching from API, Promises vs Callbacks, async/await, RESTful integration
  */
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "http://localhost:5001/api";
 
 const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
@@ -14,6 +14,12 @@ const getAuthHeaders = () => {
 };
 
 const handleResponse = async (response) => {
+    const contentType = response.headers.get("content-type");
+    
+    if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Backend server is not reachable on http://localhost:5001. Please restart backend using 'npm run dev' inside backend folder.");
+    }
+
     const data = await response.json();
     if (!response.ok) {
         throw new Error(data.message || "An error occurred with the request");
@@ -24,32 +30,53 @@ const handleResponse = async (response) => {
 // 1. Authentication API Services
 export const authAPI = {
     signup: async (name, email, password) => {
-        const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, email, password })
-        });
-        return handleResponse(response);
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, email, password })
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            if (error.name === "TypeError" && error.message.includes("fetch")) {
+                throw new Error("Cannot connect to Backend server at http://localhost:5001. Please restart the backend server.");
+            }
+            throw error;
+        }
     },
 
     login: async (email, password) => {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password })
-        });
-        return handleResponse(response);
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password })
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            if (error.name === "TypeError" && error.message.includes("fetch")) {
+                throw new Error("Cannot connect to Backend server at http://localhost:5001. Please restart the backend server.");
+            }
+            throw error;
+        }
     }
 };
 
 // 2. Todo API Services (Protected RESTful Endpoints)
 export const todoAPI = {
     getTodos: async () => {
-        const response = await fetch(`${API_BASE_URL}/todos`, {
-            method: "GET",
-            headers: getAuthHeaders()
-        });
-        return handleResponse(response);
+        try {
+            const response = await fetch(`${API_BASE_URL}/todos`, {
+                method: "GET",
+                headers: getAuthHeaders()
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            if (error.name === "TypeError" && error.message.includes("fetch")) {
+                throw new Error("Cannot connect to Backend server at http://localhost:5001.");
+            }
+            throw error;
+        }
     },
 
     createTodo: async (title, priority = "Medium", category = "General") => {
@@ -58,7 +85,7 @@ export const todoAPI = {
             headers: getAuthHeaders(),
             body: JSON.stringify({ title, priority, category })
         });
-        return handleResponse(response);
+        return await handleResponse(response);
     },
 
     updateTodo: async (id, updates) => {
@@ -67,7 +94,7 @@ export const todoAPI = {
             headers: getAuthHeaders(),
             body: JSON.stringify(updates)
         });
-        return handleResponse(response);
+        return await handleResponse(response);
     },
 
     deleteTodo: async (id) => {
@@ -75,7 +102,7 @@ export const todoAPI = {
             method: "DELETE",
             headers: getAuthHeaders()
         });
-        return handleResponse(response);
+        return await handleResponse(response);
     },
 
     // AI Task Organization Endpoint Integration
@@ -84,7 +111,7 @@ export const todoAPI = {
             method: "POST",
             headers: getAuthHeaders()
         });
-        return handleResponse(response);
+        return await handleResponse(response);
     },
 
     // SQL Analytics & Relational Schema Endpoint Integration
@@ -93,6 +120,6 @@ export const todoAPI = {
             method: "GET",
             headers: getAuthHeaders()
         });
-        return handleResponse(response);
+        return await handleResponse(response);
     }
 };
